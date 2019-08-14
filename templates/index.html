@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<!-- saved from url=(0040)https://thermostat-jquery.herokuapp.com/ -->
+<html class="gr__thermostat-jquery_herokuapp_com">
+  <head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>Aircon</title>
+    <meta name="viewport" content="width=600, initial-scale=1">
+    <link rel="stylesheet" href="{{ url_for('static', filename='normalize.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="{{ url_for('static', filename='fusioncharts.js') }}"></script>
+    <script src="{{ url_for('static', filename='fusioncharts.widgets.js') }}"></script>
+    <script src="{{ url_for('static', filename='fusioncharts.theme.fint.js') }}"></script>
+
+  <script type="text/javascript">//<![CDATA[
+
+    window.onload=function(){
+      
+FusionCharts.ready(function () {
+    var chart = new FusionCharts({
+        type: 'thermometer',
+        renderAt: 'chart-container',
+        id  : 'myThm',
+        width: '240',
+        height: '300',
+        dataFormat: 'json',
+        dataSource: {
+            "chart": {
+                "caption": "",
+                "subcaption": "",
+                "lowerLimit": "0",
+                "upperLimit": "40",
+                "numberSuffix": "°C",
+                "showhovereffect": "1",
+                "thmFillColor": "#ff6600",
+                "gaugeFillColor": "#ff6600",
+                "showGaugeBorder" : "1",
+                "gaugeBorderColor" :  "#ff6600",
+                "gaugeBorderThickness" :  "2",
+                "gaugeBorderAlpha" :  "30",
+                "thmOriginX": "100",
+                "theme" : "fint"
+            },
+            "value": "NaN",
+            //All annotations are grouped under this element
+            "annotations": {
+                "showbelow": "0"
+                
+            },
+        },
+        "events" :{
+            "rendered" : function (evt, arg) {
+                var chargeInterval = setInterval( function(){
+                    $.getJSON( "control/status", function( data ) {
+                      var temp = data["temperature"];
+                      FusionCharts.items["myThm"].feedData("&value="+temp);
+                      if (data["control_active"]) {
+                        $("#btn-toggle-on-off").text("Off");
+                      } else {
+                        $("#btn-toggle-on-off").text("On");
+                      }
+                      if (data["zone1"]) {
+                        $("#ind-zone1").attr('class', "led-green");
+                      } else {
+                        $("#ind-zone1").attr('class', "led-red");
+                      }
+                      if (data["zone2"]) {
+                        $("#ind-zone2").attr('class', "led-green");
+                      } else {
+                        $("#ind-zone2").attr('class', "led-red");
+                      }
+                      if (data["zone3"]) {
+                        $("#ind-zone3").attr('class', "led-green");
+                      } else {
+                        $("#ind-zone3").attr('class', "led-red");
+                      }
+                      console.log(data);
+                    });
+
+                }, 300);
+            }   
+        }
+    })
+    .render();
+});
+
+    }
+
+  //]]></script>
+
+  </head>
+  <body data-gr-c-s-loaded="true" class="medium-usage">
+    <main class="grid">
+      <section class="col-7-12">
+        <h1>
+          <span id="temperature">--</span>
+        </h1>
+          <button class="increase-temp">+</button>
+          <button class="decrease-temp">-</button>
+          <button id="btn-toggle-on-off" class="PSM-on">--</button>
+          <div id="ind-zone1" class="led-red"></div>Zone 1
+          <div id="ind-zone2" class="led-red"></div>Zone 2
+          <div id="ind-zone3" class="led-red"></div>Zone 3
+      </section>
+      <section class="col-5-12">
+        <div id="chart-container">FusionCharts will render here</div>
+
+      </section>
+    </main>
+    <script src="{{ url_for('static', filename='jquery-2.1.1.min.js.download') }}"></script>
+    <script src="{{ url_for('static', filename='thermostat.js.download') }}"></script>
+    <script src="{{ url_for('static', filename='interface.js.download') }}"></script>
+  
+
+</body></html>

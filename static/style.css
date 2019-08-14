@@ -1,0 +1,161 @@
+body {
+  font-weight: bold;
+}
+
+h2, .button {
+  letter-spacing: -0.03em;
+}
+
+h1 {
+  font-size: 15em;
+  margin: auto;
+  letter-spacing: -0.06em;
+}
+
+h2 span {
+  background: #fff;
+  padding: 0 10px 0 10px;
+  position: relative;
+  color: black;
+}
+
+.high-usage {
+  color: #e80000;
+}
+
+.medium-usage {
+  color: #ff6600;
+}
+
+.low-usage {
+  color: #00aaa9;
+}
+
+h2.high-usage {
+  background-color: #e80000;
+}
+
+h2.medium-usage {
+  background-color: #ff6600;
+}
+
+h2.low-usage {
+  background-color: #00aaa9;
+}
+
+.PSM-on, .PSM-off, button {
+  background: #030303;
+  background-image: -webkit-linear-gradient(top, #030303, #000000);
+  background-image: -moz-linear-gradient(top, #030303, #000000);
+  background-image: -ms-linear-gradient(top, #030303, #000000);
+  background-image: -o-linear-gradient(top, #030303, #000000);
+  background-image: linear-gradient(to bottom, #030303, #000000);
+  -webkit-border-radius: 30;
+  -moz-border-radius: 30;
+  border-radius: 30px;
+  font-family: Arial;
+  color: #ffffff;
+  font-size: 20px;
+  padding: 10px 20px 10px 20px;
+  text-decoration: none;
+}
+
+img.thermometer {
+  height: 43em;
+}
+
+img {
+  margin-left: -0.1em;
+}
+
+/***************************************/
+/*GRID LAYOUT
+/***************************************/
+
+*, *:after, *:before {
+  -webkit-box-sizing: border-box;
+     -moz-box-sizing: border-box;
+          box-sizing: border-box;
+}
+.grid {
+  width: 500;
+  height: 650;
+}
+
+[class*='col-'] {
+  float: left;
+}
+
+
+
+/***************************************/
+/*CLEARFIX
+/***************************************/
+
+.grid:after {
+  display: table;
+  clear: both;
+}
+
+
+
+/***************************************/
+/*GUTTERS
+/***************************************/
+
+[class*='col-'] {
+  padding-right: 10px;
+}
+
+
+
+/***************************************/
+/*WIDTHS
+/***************************************/
+
+.col-7-12 {
+  width: 300;
+  text-align: right;
+}
+
+.col-5-12 {
+  width: 200;
+  background: white;
+}
+
+
+.led-red {
+    margin: 20px auto;
+    width: 12px;
+    height: 12px;
+    background-color: #940;
+    border-radius: 50%;
+    box-shadow: #000 0 -1px 7px 1px, inset #600 0 -1px 9px, #F00 0 2px 12px;
+}
+
+.led-yellow {
+    margin: 20px auto;
+    width: 12px;
+    height: 12px;
+    background-color: #A90;
+    border-radius: 50%;
+    box-shadow: #000 0 -1px 7px 1px, inset #660 0 -1px 9px, #DD0 0 2px 12px;
+}
+
+.led-green {
+    margin: 20px auto;
+    width: 12px;
+    height: 12px;
+    background-color: #690;
+    border-radius: 50%;
+    box-shadow: #000 0 -1px 7px 1px, inset #460 0 -1px 9px, #7D0 0 2px 12px;
+}
+
+.led-blue {
+    margin: 20px auto;
+    width: 12px;
+    height: 12px;
+    background-color: #4AB;
+    border-radius: 50%;
+    box-shadow: #000 0 -1px 7px 1px, inset #006 0 -1px 9px, #06F 0 2px 14px;
+}
