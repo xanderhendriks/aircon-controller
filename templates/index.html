@@ -39,7 +39,7 @@ FusionCharts.ready(function () {
                 "thmOriginX": "100",
                 "theme" : "fint"
             },
-            "value": "NaN",
+            "value": {{ temperatures.outdoor_temperature.temperature }},
             //All annotations are grouped under this element
             "annotations": {
                 "showbelow": "0"
@@ -50,8 +50,7 @@ FusionCharts.ready(function () {
             "rendered" : function (evt, arg) {
                 var chargeInterval = setInterval( function(){
                     $.getJSON( "control/status", function( data ) {
-                      var temp = data["temperature"];
-                      FusionCharts.items["myThm"].feedData("&value="+temp);
+                      FusionCharts.items["myThm"].feedData("&value=" + data["temperatures"]["outdoor_temperature"]);
                       if (data["control_active"]) {
                         $("#btn-toggle-on-off").text("Off");
                       } else {
@@ -72,6 +71,10 @@ FusionCharts.ready(function () {
                       } else {
                         $("#ind-zone3").attr('class', "led-red");
                       }
+                      $("#temp-zone1").text(data["temperatures"]["masterbedroom_temperature"])
+                      $("#temp-zone2").text(data["temperatures"]["homeoffice_temperature"])
+                      $("#temp-zone3").text(data["temperatures"]["livingroom_temperature"])
+                      $("#temp-outdoor").text(data["temperatures"]["outdoor_temperature"])
                       console.log(data);
                     });
 
@@ -96,9 +99,28 @@ FusionCharts.ready(function () {
           <button class="increase-temp">+</button>
           <button class="decrease-temp">-</button>
           <button id="btn-toggle-on-off" class="PSM-on">--</button>
-          <div id="ind-zone1" class="led-red"></div>Zone 1
-          <div id="ind-zone2" class="led-red"></div>Zone 2
-          <div id="ind-zone3" class="led-red"></div>Zone 3
+          <table align="center">
+          <tr>
+            <td width=50><div id="ind-zone1" class="led-red"></div></td>
+            <td width=120>Master Bed</td>
+            <td width=50><div id="temp-zone1">{{ temperatures.masterbedroom_temperature.temperature }}</div></td>
+          </tr>
+          <tr>
+            <td width=50><div id="ind-zone2" class="led-red"></div></td>
+            <td width=120>Home Office</td>
+            <td width=50><div id="temp-zone2">{{ temperatures.homeoffice_temperature.temperature }}</div></td>
+          </tr>
+          <tr>
+            <td width=50><div id="ind-zone3" class="led-red"></div></td>
+            <td width=120>Living Room</td>
+            <td width=50><div id="temp-zone3">{{ temperatures.livingroom_temperature.temperature }}</div></td>
+          </tr>
+          <tr>
+            <td width=50></td>
+            <td width=120>Outdoor</td>
+            <td width=50><div id="temp-outdoor">{{ temperatures.outdoor_temperature.temperature }}</div></td>
+          </tr>
+          </table>
       </section>
       <section class="col-5-12">
         <div id="chart-container">FusionCharts will render here</div>

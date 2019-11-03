@@ -16,19 +16,22 @@ ZERO_TIME = 1350
 
 DELTA_TEMPERATURE = 0.75
 
+SENSORS = ['outdoor_temperature', 'livingroom_temperature', 'homeoffice_temperature', 'masterbedroom_temperature']
+
 timing = 0
 last_tick = 0
 data = 0
 last_data = 0
 bit_index = 0
 
-sensor1_payload = {}
+sensor_payloads = {}
 control_active = False
 temperature_set = 20
 
 @app.route("/")
 def index():
-    return render_template("index.html", temperature=sensor1_payload['temperature'])
+    update_sensor_status()
+    return render_template("index.html", temperatures=sensor_payloads)
 
 
 @app.route("/control/toggle")
@@ -44,16 +47,20 @@ def control_toggle():
 def control_status():
     global last_data
     status = {}
+    temperatures = {}
 
     status['raw'] = bin(last_data)
     status['aircon_active'] = last_data & (0x01 << 31) == (0x01 << 31)
     status['control_active'] = control_active
-    status['zone1'] = last_data & (0x01 << 18) == (0x01 << 18)
-    status['zone2'] = last_data & (0x01 << 25) == (0x01 << 25)
-    status['zone3'] = last_data & (0x01 << 27) == (0x01 << 27)
-    status['temperature_set'] = temperature_set
+    status['zone1'] = is_zone_active(1)
+    status['zone2'] = is_zone_active(2)
+    status['zone3'] = is_zone_active(3)
+    temperatures['set'] = temperature_set
     update_sensor_status()
-    status['temperature'] = sensor1_payload['temperature']
+    for sensor in SENSORS:
+        temperatures[sensor] = sensor_payloads[sensor]['temperature']
+
+    status['temperatures'] = temperatures
 
     return json.dumps(status)
 
@@ -79,10 +86,24 @@ def log():
     return logs
 
 
-@app.route("/sense/sensor1")
-def sense_sensor1():
+@app.route("/sense/<location>/<sensor>")
+def sense_sensor(location, sensor):
     update_sensor_status()
-    return json.dumps(sensor1_payload)
+    return json.dumps(sensor_payloads['%s_%s' % (location, sensor)])
+
+
+def is_zone_active(zone):
+    zones = {1: 18, 2: 25, 3: 27}
+
+    return last_data & (0x01 << zones[zone]) == (0x01 << zones[zone])
+
+
+def active_sensor_temperature():
+    zones = {1: 'masterbedroom_temperature', 2: 'homeoffice_temperature', 3: 'livingroom_temperature'}
+
+    for zone in zones:
+        if is_zone_active(zone):
+            return sensor_payloads[zones(zone)]['temperature']
 
 
 def get_area_string(data):
@@ -94,7 +115,7 @@ def get_area_string(data):
         area_string = 'Living + Bedrooms'
     else:
         raise ValueError('Area data invalid %d' % data)
-        
+
     return area_string
 
 
@@ -109,7 +130,7 @@ def get_fan_string(data):
         fan_string = 'Low'
     else:
         raise ValueError('Fan data invalid %d' % data)
-        
+
     return fan_string
 
 
@@ -125,7 +146,7 @@ def cbf(gpio, level, tick):
     global last_tick
     global data
     global last_data
-    
+
     if last_tick != 0:
         timing = tick - last_tick
 
@@ -140,7 +161,7 @@ def cbf(gpio, level, tick):
         elif timing > ZERO_TIME:
             data = (data << 1)
             bit_index += 1
-        
+
         if bit_index == 41:
             if last_data != data:
                 #received_data(data)
@@ -148,7 +169,7 @@ def cbf(gpio, level, tick):
                 last_data = data
         elif bit_index > 41:
             print 'bit_index', bit_index, timing
-        
+
     last_tick = tick
 
 
@@ -159,22 +180,22 @@ def toggle_on_off():
 
 
 def update_sensor_status():
-    global sensor1_payload
-    
-    topics = ['zigbee2mqtt/temperature-sensor1']
-    message = subscribe.simple(topics, hostname='localhost')
-    sensor1_payload = json.loads(message.payload)
+    global sensor_payloads
+
+    for sensor in SENSORS:
+        message = subscribe.simple('zigbee2mqtt/%s' % sensor.replace('_', '/'), hostname='localhost')
+        sensor_payloads[sensor] = json.loads(message.payload)
 
 
 def update_control():
     aircon_active = last_data & (0x01 << 31) == (0x01 << 31)
 
-    if control_active: 
+    if control_active:
         if aircon_active:
-            if int(sensor1_payload['temperature']) > (temperature_set + DELTA_TEMPERATURE):
+            if int(active_sensor_temperature()) > (temperature_set + DELTA_TEMPERATURE):
                 toggle_on_off()
         else:
-            if int(sensor1_payload['temperature']) < (temperature_set - DELTA_TEMPERATURE):
+            if int(active_sensor_temperature()) < (temperature_set - DELTA_TEMPERATURE):
                 toggle_on_off()
     else:
         if aircon_active:
@@ -184,7 +205,7 @@ def update_control():
 def timer_30sec_callback():
     update_sensor_status()
     update_control()
-    
+
     threading.Timer(30, timer_30sec_callback).start()
 
 
