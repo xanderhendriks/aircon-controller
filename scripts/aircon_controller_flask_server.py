@@ -1,16 +1,33 @@
 #!/usr/bin/env python
 
 import json
+import logging
 import pigpio
 import time
 import threading
 from flask import Flask, render_template
 import paho.mqtt.subscribe as subscribe
+import paho.mqtt.client as mqttClient
+
+logger = logging.getLogger('aircon_flask_server')
+logger.setLevel(logging.DEBUG)
+# create file handler which logs even debug messages
+file_handle = logging.FileHandler('/home/pi/aircon-controller/aircon_comms.log')
+file_handle.setLevel(logging.DEBUG)
+# create formatter and add it to the handlers
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+file_handle.setFormatter(formatter)
+
+# add the handlers to the logger
+logger.addHandler(file_handle)
+
 
 app = Flask(__name__)
 pi = pigpio.pi()
+mqtt_client = mqttClient.Client("Python")
+mqtt_client.connect('192.168.0.253', 1883)
 
-INTER_WORD_TIME = 200000
+INTER_WORD_TIME = 7000
 ONE_TIME = 400
 ZERO_TIME = 1350
 
@@ -38,9 +55,11 @@ def index():
 def control_toggle():
     global control_active
 
-    control_active = not control_active
-    # toggle_on_off()
-    return 'active' if control_active else 'inactive'
+    #control_active = not control_active
+    # return 'active' if control_active else 'inactive'
+
+    toggle_on_off()
+    return 'OK'
 
 
 @app.route("/control/status")
@@ -51,6 +70,12 @@ def control_status():
 
     status['raw'] = bin(last_data)
     status['aircon_active'] = last_data & (0x01 << 31) == (0x01 << 31)
+    if last_data & (0x01 << 24) == (0x01 << 24):
+        status['aircon_mode'] = 'heating'
+    elif last_data & (0x01 << 39) == (0x01 << 39):
+        status['aircon_mode'] = 'cooling'
+    else:
+        status['aircon_mode'] = 'off'
     status['control_active'] = control_active
     status['zone1'] = is_zone_active(1)
     status['zone2'] = is_zone_active(2)
@@ -80,7 +105,7 @@ def control_temperature_get():
 
 @app.route("/log")
 def log():
-    file = open('/home/pi/aircon_service/aircon_service.log')
+    file = open('/home/pi/aircon-controller/aircon-controller.log')
     logs = file.read()
 
     return logs
@@ -103,42 +128,41 @@ def active_sensor_temperature():
 
     for zone in zones:
         if is_zone_active(zone):
-            return sensor_payloads[zones(zone)]['temperature']
+            return sensor_payloads[zones[zone]]['temperature']
 
 
 def get_area_string(data):
     if data == 1:
-        area_string = 'Living'
+        area_string = 'Master'
     elif data == 2:
         area_string = 'Bedrooms'
     elif data == 3:
         area_string = 'Living + Bedrooms'
     else:
-        raise ValueError('Area data invalid %d' % data)
+        area_string = 'Area data invalid %d' % data
 
     return area_string
 
 
 def get_fan_string(data):
+    fan_data = (data & 0x07 << 28) >> 28
+
     if data == 0:
         fan_string = 'Off'
     elif data == 1:
-        fan_string = 'High'
+        fan_string = 'Low'
     elif data == 2:
         fan_string = 'Medium'
     elif data == 4:
-        fan_string = 'Low'
+        fan_string = 'High'
     else:
-        raise ValueError('Fan data invalid %d' % data)
+        fan_string = 'Fan data invalid %d' % data
 
     return fan_string
 
 
 def received_data(data):
-    print 'Raw data: 0x%04X' % data
-    print 'Area: %s' % get_area_string(data & 0x0003)
-    print 'Fan: %s' % get_fan_string((data & 0x0E00) >> 9)
-    print 'Control data: 0x%04X' % (data & ~(0x0E00 | 0x0003))
+    return 'Raw data: 0x%010X, Area: %s, Fan: %s, Control data: 0x%04X\n' % (data, get_area_string(data & 0x0003), get_fan_string((data & 0x0E00) >> 9), (data & ~(0x0E00 | 0x0003)))
 
 
 def cbf(gpio, level, tick):
@@ -164,11 +188,12 @@ def cbf(gpio, level, tick):
 
         if bit_index == 41:
             if last_data != data:
-                #received_data(data)
-                print data
+                logger.info(received_data(data))
+                print(data)
                 last_data = data
+
         elif bit_index > 41:
-            print 'bit_index', bit_index, timing
+            print('bit_index', bit_index, timing)
 
     last_tick = tick
 
@@ -183,20 +208,31 @@ def update_sensor_status():
     global sensor_payloads
 
     for sensor in SENSORS:
-        message = subscribe.simple('zigbee2mqtt/%s' % sensor.replace('_', '/'), hostname='localhost')
+        message = subscribe.simple('zigbee2mqtt/%s' % sensor.replace('_', '/'), hostname='192.168.0.253')
         sensor_payloads[sensor] = json.loads(message.payload)
 
 
 def update_control():
     aircon_active = last_data & (0x01 << 31) == (0x01 << 31)
+    aircon_heating = False # last_data & (0x01 << 24) == (0x01 << 24)
+    mqtt_client.publish('zigbee2mqtt/aircon/current_temperature/get', active_sensor_temperature(), 0, True)
 
     if control_active:
-        if aircon_active:
-            if int(active_sensor_temperature()) > (temperature_set + DELTA_TEMPERATURE):
-                toggle_on_off()
+        if aircon_heating:
+            if aircon_active:
+                if int(active_sensor_temperature()) > (temperature_set + DELTA_TEMPERATURE):
+                    toggle_on_off()
+            else:
+                if int(active_sensor_temperature()) < (temperature_set - DELTA_TEMPERATURE):
+                    toggle_on_off()
         else:
-            if int(active_sensor_temperature()) < (temperature_set - DELTA_TEMPERATURE):
-                toggle_on_off()
+            if aircon_active:
+                if int(active_sensor_temperature()) < (temperature_set - DELTA_TEMPERATURE):
+                    toggle_on_off()
+            else:
+                if int(active_sensor_temperature()) > (temperature_set + DELTA_TEMPERATURE):
+                    toggle_on_off()
+
     else:
         if aircon_active:
             toggle_on_off()

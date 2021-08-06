@@ -22,8 +22,14 @@ Having a static IP can be convenient to find the device on the LAN and this can 
 
 clone the repo in the **/home/pi** directory and execute the following commands:
 
-1. Install the required Python packages: ``pip3 install -r scripts/requirements.txt``
-2. Create a symbolic link for the service: ``sudo ln -s /home/pi/aircon-controller/linux/etc/systemd/system/aircon-controller.service /etc/systemd/system/aircon-controller.service``
+1. Install pigpio::
+
+    sudo apt-get install pigpio
+    sudo systemctl start pigpiod
+    sudo systemctl enable pigpiod
+
+2. Install the required Python packages: ``pip3 install -r scripts/requirements.txt``
+3. Create a symbolic link for the service: ``sudo ln -s /home/pi/aircon-controller/linux/etc/systemd/system/aircon-controller.service /etc/systemd/system/aircon-controller.service``
 
 Configuration
 -------------
