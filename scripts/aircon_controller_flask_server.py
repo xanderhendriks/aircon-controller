@@ -45,6 +45,7 @@ sensor_payloads = {}
 control_active = False
 temperature_set = 20
 
+
 @app.route("/")
 def index():
     update_sensor_status()
@@ -54,9 +55,6 @@ def index():
 @app.route("/control/toggle")
 def control_toggle():
     global control_active
-
-    #control_active = not control_active
-    # return 'active' if control_active else 'inactive'
 
     toggle_on_off()
     return 'OK'
@@ -147,13 +145,13 @@ def get_area_string(data):
 def get_fan_string(data):
     fan_data = (data & 0x07 << 28) >> 28
 
-    if data == 0:
+    if fan_data == 0:
         fan_string = 'Off'
-    elif data == 1:
+    elif fan_data == 1:
         fan_string = 'Low'
-    elif data == 2:
+    elif fan_data == 2:
         fan_string = 'Medium'
-    elif data == 4:
+    elif fan_data == 4:
         fan_string = 'High'
     else:
         fan_string = 'Fan data invalid %d' % data
@@ -162,7 +160,10 @@ def get_fan_string(data):
 
 
 def received_data(data):
-    return 'Raw data: 0x%010X, Area: %s, Fan: %s, Control data: 0x%04X\n' % (data, get_area_string(data & 0x0003), get_fan_string((data & 0x0E00) >> 9), (data & ~(0x0E00 | 0x0003)))
+    return 'Raw data: 0x%010X, Area: %s, Fan: %s, Control data: 0x%04X\n' % (data,
+                                                                             get_area_string(data & 0x0003),
+                                                                             get_fan_string((data & 0x0E00) >> 9),
+                                                                             (data & ~(0x0E00 | 0x0003)))
 
 
 def cbf(gpio, level, tick):
@@ -214,7 +215,7 @@ def update_sensor_status():
 
 def update_control():
     aircon_active = last_data & (0x01 << 31) == (0x01 << 31)
-    aircon_heating = False # last_data & (0x01 << 24) == (0x01 << 24)
+    aircon_heating = False  # last_data & (0x01 << 24) == (0x01 << 24)
     mqtt_client.publish('zigbee2mqtt/aircon/current_temperature/get', active_sensor_temperature(), 0, True)
 
     if control_active:
@@ -248,13 +249,14 @@ def timer_30sec_callback():
 def main():
     # Setup aircon controller protocol parser
     pi.set_pull_up_down(14, pigpio.PUD_UP)
-    cb1 = pi.callback(14, pigpio.EITHER_EDGE, cbf)
+    pi.callback(14, pigpio.EITHER_EDGE, cbf)
 
     # Start 30 sec timer
     timer_30sec_callback()
 
     # Setup flask server
     app.run(host='0.0.0.0')
+
 
 if __name__ == "__main__":
     main()
